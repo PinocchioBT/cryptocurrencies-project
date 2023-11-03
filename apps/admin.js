@@ -50,6 +50,7 @@ adminRouter.post("/addCryptocurrencies", async (req, res) => {
   }
 });
 
+//Admin can adjust customer's balance
 adminRouter.put("/adjustBalance/:walletId", async (req, res) => {
   const { walletId } = req.params;
   const { action, amount } = req.body;
@@ -85,6 +86,8 @@ adminRouter.put("/adjustBalance/:walletId", async (req, res) => {
   }
 });
 
+
+// Admin can add exchange rate
 adminRouter.post("/addExchangeRate", async (req, res) => {
   try {
     const { fromCurrency, toCurrency, exchangeRate } = req.body;
@@ -110,6 +113,7 @@ adminRouter.post("/addExchangeRate", async (req, res) => {
   }
 });
 
+// Admin can update exchange rate
 adminRouter.put("/updateExchangeRate", async (req, res) => {
   try {
     const { fromCurrency, toCurrency, exchangeRate } = req.body;
@@ -134,6 +138,8 @@ adminRouter.put("/updateExchangeRate", async (req, res) => {
   }
 });
 
+
+// Admin can delete exchange rate
 adminRouter.delete("/deleteExchangeRate/:exchangeRateId", async (req, res) => {
   try {
     const { exchangeRateId } = req.params;
