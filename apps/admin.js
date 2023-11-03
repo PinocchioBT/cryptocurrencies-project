@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool } from "../utils/db";
+import { pool } from "../utils/db.js";
 
 const adminRouter = Router();
 
@@ -27,6 +27,46 @@ adminRouter.get("/totalBalance", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Admin can add a new wallet for a user
+adminRouter.post("/addWallet", async (req, res) => {
+    try {
+      const { userId, currencyId, initialBalance } = req.body;
+  
+      // Check if the user exists
+      const userQuery = "SELECT * FROM users WHERE user_id = $1";
+      const userResult = await pool.query(userQuery, [userId]);
+  
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      // Check if the currency exists
+      const currencyQuery = "SELECT * FROM cryptocurrencies WHERE currency_id = $1";
+      const currencyResult = await pool.query(currencyQuery, [currencyId]);
+  
+      if (currencyResult.rows.length === 0) {
+        return res.status(404).json({ error: "Currency not found" });
+      }
+  
+      // Add a new wallet for the user
+      const insertQuery = `
+        INSERT INTO wallet (user_id, currency_id, balance)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+  
+      const values = [userId, currencyId, initialBalance || 0]; // Default initialBalance to 0 if not provided
+      const { rows } = await pool.query(insertQuery, values);
+      const walletData = rows[0];
+  
+      res.json({ message: "Wallet added successfully", walletData });
+    } catch (error) {
+      console.error("Internal server error", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
 
 //Admin can add other cryptocurrency
 adminRouter.post("/addCryptocurrencies", async (req, res) => {
@@ -145,7 +185,7 @@ adminRouter.delete("/deleteExchangeRate/:exchangeRateId", async (req, res) => {
     const { exchangeRateId } = req.params;
 
     const deleteQuery =
-      "DELETE FROM exchange_rates WHERE exchange_rate_id = $1";
+      "DELETE FROM exchange_rates WHERE exchange_rates_id = $1";
     await pool.query(deleteQuery, [exchangeRateId]);
 
     res.json({ message: "Exchange rate deleted successfully" });
