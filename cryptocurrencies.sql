@@ -11,15 +11,16 @@ CREATE DATABASE cryptocurrencies
 -- Create Table
 
 CREATE TABLE users (
-    user_id INT PRIMARY KEY,
+    user_id SERIAL PRIMARY KEY,
     username VARCHAR(255),
     email VARCHAR(255),
     password VARCHAR(255),
+    role VARCHAR(255),
     created_at TIMESTAMP
 );
 
 CREATE TABLE wallet (
-    wallet_id INT PRIMARY KEY,
+    wallet_id SERIAL PRIMARY KEY,
     user_id INT,
     currency_id INT,
     balance DECIMAL(10,2),
@@ -29,13 +30,13 @@ CREATE TABLE wallet (
 );
 
 CREATE TABLE cryptocurrencies (
-    currency_id INT PRIMARY KEY,
+    currency_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     symbol VARCHAR(10)
 );
 
 CREATE TABLE exchange_rates (
-    exchange_rates_id INT PRIMARY KEY,
+    exchange_rates_id SERIAL PRIMARY KEY,
     from_currency_id INT,
     to_currency_id INT,
     exchange_rate DECIMAL(10,5),
