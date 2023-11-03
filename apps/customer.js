@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../utils/db.js";
+import BigNumber from "bignumber.js";
 
 const customerRouter = Router();
 
@@ -68,62 +69,64 @@ customerRouter.post("/buyCryptocurrency", async (req, res) => {
     }
   });
   
-customerRouter.post("/sellCryptocurrency", async (req, res) => {
-  try {
-    const { userId, currencyId, amount } = req.body;
-
-    // Validate the input
-    if (!userId || !currencyId || !amount) {
-      return res.status(400).json({ error: "Missing required parameters" });
+  customerRouter.post("/sellCryptocurrency", async (req, res) => {
+    try {
+      console.log("request body", req.body);
+      const { userId, currencyId, amount } = req.body;
+  
+      // Validate the input
+      if (!userId || !currencyId || !amount) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+  
+      // Check if the user exists
+      const userQuery = "SELECT * FROM users WHERE user_id = $1";
+      const userResult = await pool.query(userQuery, [userId]);
+  
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      // Check if the currency exists
+      const currencyQuery =
+        "SELECT * FROM cryptocurrencies WHERE currency_id = $1";
+      const currencyResult = await pool.query(currencyQuery, [currencyId]);
+  
+      if (currencyResult.rows.length === 0) {
+        return res.status(404).json({ error: "Currency not found" });
+      }
+  
+      // Get the user's wallet balance for the specified currency
+      const walletQuery =
+        "SELECT * FROM wallet WHERE user_id = $1 AND currency_id = $2";
+      const walletResult = await pool.query(walletQuery, [userId, currencyId]);
+  
+      if (walletResult.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Wallet not found for user and currency" });
+      }
+  
+      const walletData = walletResult.rows[0];
+      const currentBalance = new BigNumber(walletData.balance);
+      const sellAmount = new BigNumber(amount);
+  
+      // Calculate new balance after sale
+      const updatedBalance = currentBalance.plus(sellAmount);
+  
+      // Update the user's wallet balance
+      const updateWalletQuery =
+        "UPDATE wallet SET balance = $1 WHERE user_id = $2 AND currency_id = $3";
+      await pool.query(updateWalletQuery, [updatedBalance.toString(), userId, currencyId]);
+  
+      // Record the transaction (You may need to adjust this part based on your specific transaction recording process)
+  
+      res.json({ message: "Cryptocurrency sold successfully" });
+    } catch (error) {
+      console.error("Internal server error", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    // Check if the user exists
-    const userQuery = "SELECT * FROM users WHERE user_id = $1";
-    const userResult = await pool.query(userQuery, [userId]);
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Check if the currency exists
-    const currencyQuery =
-      "SELECT * FROM cryptocurrencies WHERE currency_id = $1";
-    const currencyResult = await pool.query(currencyQuery, [currencyId]);
-
-    if (currencyResult.rows.length === 0) {
-      return res.status(404).json({ error: "Currency not found" });
-    }
-
-    // Get the user's wallet balance for the specified currency
-    const walletQuery =
-      "SELECT * FROM wallet WHERE user_id = $1 AND currency_id = $2";
-    const walletResult = await pool.query(walletQuery, [userId, currencyId]);
-
-    if (walletResult.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "Wallet not found for user and currency" });
-    }
-
-    const walletData = walletResult.rows[0];
-    const currentBalance = walletData.balance;
-
-    // Calculate new balance after sale
-    const updatedBalance = currentBalance + amount;
-
-    // Update the user's wallet balance
-    const updateWalletQuery =
-      "UPDATE wallet SET balance = $1 WHERE user_id = $2 AND currency_id = $3";
-    await pool.query(updateWalletQuery, [updatedBalance, userId, currencyId]);
-
-    // Record the transaction (You may need to adjust this part based on your specific transaction recording process)
-
-    res.json({ message: "Cryptocurrency sold successfully" });
-  } catch (error) {
-    console.error("Internal server error", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  });
 
 customerRouter.post("/transferCryptocurrency", async (req, res) => {
   try {
@@ -134,7 +137,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
     const senderWalletQuery = `
             SELECT balance
             FROM wallet
-            WHERE userId = $1 AND currencyId = $2
+            WHERE user_id = $1 AND currency_id = $2
         `;
 
     const senderWalletResult = await pool.query(senderWalletQuery, [
@@ -187,7 +190,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
       const updateSenderQuery = `
                 UPDATE wallet
                 SET balance = $1
-                WHERE userId = $2 AND currencyId = $3
+                WHERE user_id = $2 AND currency_id = $3
             `;
 
       await pool.query(updateSenderQuery, [
@@ -200,7 +203,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
       const receiverWalletQuery = `
                 SELECT balance
                 FROM wallet
-                WHERE userId = $1 AND currencyId = $2
+                WHERE user_id = $1 AND currency_id = $2
             `;
 
       const receiverWalletResult = await pool.query(receiverWalletQuery, [
@@ -216,7 +219,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
       const updateReceiverQuery = `
                 UPDATE wallet
                 SET balance = $1
-                WHERE userId = $2 AND currencyId = $3
+                WHERE user_id = $2 AND currency_id = $3
             `;
 
       await pool.query(updateReceiverQuery, [
