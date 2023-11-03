@@ -5,28 +5,31 @@ const adminRouter = Router();
 
 //Admin can see all total balance of all cryptocurrency.
 adminRouter.get("/totalBalance", async (req, res) => {
-  try {
-    const currenciesQuery = "SELECT * FROM cryptocurrencies";
-    const currenciesResult = await pool.query(currenciesQuery);
-    const currencies = currenciesResult.rows;
-
-    let totalBalance = 0;
-
-    for (const currency of currencies) {
-      const walletQuery = "SELECT balance FROM wallet WHERE currencyId = $1";
-      const walletResult = await pool.query(walletQuery, [currency.id]);
-      const walletData = walletResult.rows[0];
-
-      const balance = walletData?.balance || 0;
-      totalBalance += balance;
+    try {
+      const currenciesQuery = "SELECT * FROM cryptocurrencies";
+      const currenciesResult = await pool.query(currenciesQuery);
+      const currencies = currenciesResult.rows;
+  
+      let totalBalance = 0;
+  
+      for (const currency of currencies) {
+        const walletQuery = "SELECT balance FROM wallet WHERE currency_id = $1";
+        const walletResult = await pool.query(walletQuery, [currency.currency_id]);
+        const walletData = walletResult.rows[0];
+  
+        const balance = walletData?.balance || 0;
+        totalBalance += parseFloat(balance); // Ensure balance is treated as a float
+      }
+  
+      console.log("totalBalance", totalBalance);
+  
+      res.json({ totalBalance });
+    } catch (error) {
+      console.error("Internal server error", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    res.json({ totalBalance });
-  } catch (error) {
-    console.error("Internal server error", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  });
+  
 
 // Admin can add a new wallet for a user
 adminRouter.post("/addWallet", async (req, res) => {
