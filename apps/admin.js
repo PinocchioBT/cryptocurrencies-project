@@ -203,4 +203,19 @@ adminRouter.delete("/deleteExchangeRate/:exchangeRateId", async (req, res) => {
   }
 });
 
+//Admin can see all transactions
+adminRouter.get("/transactions", async (req, res) => {
+  try {
+    const transactionsQuery = `
+      SELECT * FROM transactions
+    `;
+    const transactionsResult = await pool.query(transactionsQuery);
+    const transactions = transactionsResult.rows;
+    res.json({ transactions });
+  } catch (error) {
+    console.error("Internal server error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default adminRouter;

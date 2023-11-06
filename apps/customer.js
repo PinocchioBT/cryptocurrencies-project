@@ -210,6 +210,31 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
   }
 });
 
+//customer can see all transactions (only their data)
+customerRouter.get("/transactions/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check if the user exists
+    const userQuery = "SELECT * FROM users WHERE user_id = $1";
+    const userResult = await pool.query(userQuery, [userId]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const transactionsQuery = `
+      SELECT * FROM transactions WHERE user_id = $1
+    `;
+    const transactionsResult = await pool.query(transactionsQuery, [userId]);
+    const transactions = transactionsResult.rows;
+    res.json({ transactions });
+  } catch (error) {
+    console.error("Internal server error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 
 export default customerRouter;
