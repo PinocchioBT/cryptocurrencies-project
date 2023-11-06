@@ -4,25 +4,7 @@ import bcrypt from "bcrypt";
 
 const authRouter = Router();
 
-
-// authRouter.post("/login", async (req, res) => {
-//     const { email } = req.body;
-
-//     const user = await pool.query(`select * from users where email = '${email}'`);
-
-//     if (user.rows.length === 0) {
-//         return res.status(401).json({ error: "Invalid email" });
-//     }
-
-//     const isValidPassword = await bcrypt.compare(req.body.password, user.rows[0].password);
-
-//     if (!isValidPassword) {
-//         return res.status(401).json({ error: "Invalid password" });
-//     }
-
-   
-// })
-
+//this create a new user ** Login Left (use JWT)
 authRouter.post("/register", async (req, res) => {
     console.log("request body", req.body);
   

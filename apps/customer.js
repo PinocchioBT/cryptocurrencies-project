@@ -8,12 +8,12 @@ customerRouter.post("/buySellCryptocurrency", async (req, res) => {
   try {
     const { userId, currencyId, amount, type } = req.body;
 
-    // Validate the input
+    // Validate the request body -> check if the required parameters are present
     if (!userId || !currencyId || !amount || !type) {
       return res.status(400).json({ error: "Missing required parameters" });
     }
 
-    // Check if the user exists
+    // Check if the user exists -> if not, return an error
     const userQuery = "SELECT * FROM users WHERE user_id = $1";
     const userResult = await pool.query(userQuery, [userId]);
 
@@ -30,7 +30,7 @@ customerRouter.post("/buySellCryptocurrency", async (req, res) => {
       return res.status(404).json({ error: "Currency not found" });
     }
 
-    // Get the user's wallet balance for the specified currency
+    // Get the user's wallet balance and select the currency from the wallet
     const walletQuery =
       "SELECT * FROM wallet WHERE user_id = $1 AND currency_id = $2";
     const walletResult = await pool.query(walletQuery, [userId, currencyId]);
@@ -51,7 +51,7 @@ customerRouter.post("/buySellCryptocurrency", async (req, res) => {
     console.log("Transaction Amount:", transactionAmount);
 
     if (type === "buy") {
-      // Calculate new balance after buying
+      // Calculate new balance after "buying" = -transactionAmount
       if (currentBalance < transactionAmount) {
         return res
           .status(400)
@@ -59,7 +59,7 @@ customerRouter.post("/buySellCryptocurrency", async (req, res) => {
       }
       updatedBalance = currentBalance - transactionAmount;
     } else if (type === "sell") {
-      // Calculate new balance after selling
+      // Calculate new balance after "selling" = +transactionAmount
       updatedBalance = currentBalance + transactionAmount;
     } else {
       return res.status(400).json({ error: "Invalid transaction type" });
@@ -102,7 +102,8 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
     const { senderUserId, receiverUserId, fromCurrency, toCurrency, amount } =
       req.body;
 
-    // Get sender's wallet data for the source currency
+      //SENDER WALLET
+    // Get sender's wallet data for the selected currency
     const senderWalletQuery = `
       SELECT balance
       FROM wallet
@@ -130,7 +131,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
     await pool.query("BEGIN");
 
     try {
-      // Update sender's balance for source currency
+      // Update sender's balance for selected currency
       const updatedSenderBalance = parseFloat(senderBalance) - parseFloat(amount);
       const updateSenderQuery = `
         UPDATE wallet
@@ -145,6 +146,9 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
         fromCurrency,
       ]);
 
+
+      // RECEIVER WALLET
+      
       // Get receiver's wallet data for the target currency
       const receiverWalletQuery = `
         SELECT balance
