@@ -104,10 +104,10 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
 
     // Get sender's wallet data for the source currency
     const senderWalletQuery = `
-            SELECT balance
-            FROM wallet
-            WHERE user_id = $1 AND currency_id = $2
-        `;
+      SELECT balance
+      FROM wallet
+      WHERE user_id = $1 AND currency_id = $2
+    `;
 
     const senderWalletResult = await pool.query(senderWalletQuery, [
       senderUserId,
@@ -118,8 +118,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
 
     const senderBalance = senderWalletData?.balance || 0;
 
-    console.log('Sender Balance:', senderBalance);
-
+    console.log("Sender Balance:", senderBalance);
 
     if (senderBalance < amount) {
       return res
@@ -127,56 +126,32 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
         .json({ error: "Insufficient balance for transfer" });
     }
 
-    let targetAmount = amount;
-
-    if (fromCurrency !== toCurrency) {
-      // Fetch the exchange rate
-      const exchangeRateQuery = `
-                SELECT exchange_rate
-                FROM exchange_rates
-                WHERE from_currency_id = $1 AND to_currency_id = $2
-            `;
-
-      const exchangeRateResult = await pool.query(exchangeRateQuery, [
-        fromCurrency,
-        toCurrency,
-      ]);
-      const exchangeRateData = exchangeRateResult.rows[0];
-
-      const exchangeRate = exchangeRateData?.exchange_rate;
-
-      if (!exchangeRate) {
-        return res.status(400).json({ error: "Exchange rate not found" });
-      }
-
-      // Calculate the target amount using the exchange rate
-      targetAmount = amount * exchangeRate;
-    }
-
     // Begin a transaction
     await pool.query("BEGIN");
 
     try {
       // Update sender's balance for source currency
-      const updatedSenderBalance = senderBalance - amount;
+      const updatedSenderBalance = parseFloat(senderBalance) - parseFloat(amount);
       const updateSenderQuery = `
-                UPDATE wallet
-                SET balance = $1
-                WHERE user_id = $2 AND currency_id = $3
-            `;
+        UPDATE wallet
+        SET balance = $1
+        WHERE user_id = $2 AND currency_id = $3
+      `;
+      console.log("Updated Sender Balance:", updatedSenderBalance);
 
       await pool.query(updateSenderQuery, [
-        updatedSenderBalance,
+        updatedSenderBalance.toString(),
         senderUserId,
         fromCurrency,
       ]);
 
       // Get receiver's wallet data for the target currency
       const receiverWalletQuery = `
-                SELECT balance
-                FROM wallet
-                WHERE user_id = $1 AND currency_id = $2
-            `;
+        SELECT balance
+        FROM wallet
+        WHERE user_id = $1 AND currency_id = $2
+      `;
+
 
       const receiverWalletResult = await pool.query(receiverWalletQuery, [
         receiverUserId,
@@ -184,20 +159,21 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
       ]);
       const receiverWalletData = receiverWalletResult.rows[0];
 
+      console.log("Receiver Wallet Data:", receiverWalletData);
       const receiverBalance = receiverWalletData?.balance || 0;
 
       // Update receiver's balance for target currency
-      const updatedReceiverBalance = receiverBalance + targetAmount;
+      const updatedReceiverBalance = parseFloat(receiverBalance) + parseFloat(amount);
       const updateReceiverQuery = `
-                UPDATE wallet
-                SET balance = $1
-                WHERE user_id = $2 AND currency_id = $3
-            `;
+        UPDATE wallet
+        SET balance = $1
+        WHERE user_id = $2 AND currency_id = $3
+      `;
 
-            console.log('Updated Receiver Balance:', updatedReceiverBalance);
+      console.log("Updated Receiver Balance:", updatedReceiverBalance);
 
       await pool.query(updateReceiverQuery, [
-        updatedReceiverBalance,
+        updatedReceiverBalance.toString(),
         receiverUserId,
         toCurrency,
       ]);
@@ -206,9 +182,9 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
       await pool.query("COMMIT");
 
       const recordTransactionQuery = `
-      INSERT INTO transactions (sender_user_id, receiver_user_id, from_currency, to_currency, amount, type)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `;
+        INSERT INTO transactions (sender_user_id, receiver_user_id, from_currency, to_currency, amount, type)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `;
       await pool.query(recordTransactionQuery, [
         senderUserId,
         receiverUserId,
@@ -229,5 +205,7 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 export default customerRouter;
