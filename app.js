@@ -3,6 +3,7 @@ import { pool } from "./utils/db.js";
 import authRouter from "./apps/auth.js";
 import adminRouter from "./apps/admin.js";
 import customerRouter from "./apps/customer.js";
+import blogRouter from "./apps/blog.js";
 import cors from "cors";
 import bodyParser from "body-parser";
 
@@ -16,6 +17,7 @@ app.use(bodyParser.json());
 app.use("/auth", authRouter)
 app.use("/admin", adminRouter)
 app.use("/customer", customerRouter)
+app.use("/blog", blogRouter)
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
