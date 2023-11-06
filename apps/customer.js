@@ -4,129 +4,98 @@ import BigNumber from "bignumber.js";
 
 const customerRouter = Router();
 
-customerRouter.post("/buyCryptocurrency", async (req, res) => {
-    try {
-      console.log("request body", req.body);
-      const { user_id, currency_id, amount } = req.body;
-  
-      // Validate the input
-      if (!user_id || !currency_id || !amount) {
-        return res.status(400).json({ error: "Missing required parameters" });
-      }
-  
-      // Check if the user exists
-      const userQuery = "SELECT * FROM users WHERE user_id = $1";
-      const userResult = await pool.query(userQuery, [user_id]);
-  
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Check if the currency exists
-      const currencyQuery = "SELECT * FROM cryptocurrencies WHERE currency_id = $1";
-      const currencyResult = await pool.query(currencyQuery, [currency_id]);
-  
-      if (currencyResult.rows.length === 0) {
-        return res.status(404).json({ error: "Currency not found" });
-      }
-  
-      // Get the user's wallet for the specified currency
-      const walletQuery = "SELECT * FROM wallet WHERE user_id = $1 AND currency_id = $2";
-      const walletResult = await pool.query(walletQuery, [user_id, currency_id]);
-  
-      let walletData;
-  
-      if (walletResult.rows.length === 0) {
-        // If wallet doesn't exist, create a new one
-        const createWalletQuery = "INSERT INTO wallet (user_id, currency_id, balance) VALUES ($1, $2, $3) RETURNING *";
-        const createWalletResult = await pool.query(createWalletQuery, [user_id, currency_id, 0]);
-  
-        walletData = createWalletResult.rows[0];
-      } else {
-        walletData = walletResult.rows[0];
-      }
-  
-      const currentBalance = walletData.balance;
-  
-      // Validate if the user has sufficient balance
-      if (currentBalance < amount) {
-        return res.status(400).json({ error: "Insufficient balance for purchase" });
-      }
-  
-      // Calculate new balance after purchase
-      const updatedBalance = currentBalance - amount;
-  
-      // Update the user's wallet balance
-      const updateWalletQuery = "UPDATE wallet SET balance = $1 WHERE user_id = $2 AND currency_id = $3";
-      await pool.query(updateWalletQuery, [updatedBalance, user_id, currency_id]);
-  
-      // Record the transaction (You may need to adjust this part based on your specific transaction recording process)
-  
-      res.json({ message: "Cryptocurrency bought successfully" });
-    } catch (error) {
-      console.error("Internal server error", error);
-      res.status(500).json({ error: "Internal server error" });
+customerRouter.post("/buySellCryptocurrency", async (req, res) => {
+  try {
+    const { userId, currencyId, amount, type } = req.body;
+
+    // Validate the input
+    if (!userId || !currencyId || !amount || !type) {
+      return res.status(400).json({ error: "Missing required parameters" });
     }
-  });
-  
-  customerRouter.post("/sellCryptocurrency", async (req, res) => {
-    try {
-      console.log("request body", req.body);
-      const { userId, currencyId, amount } = req.body;
-  
-      // Validate the input
-      if (!userId || !currencyId || !amount) {
-        return res.status(400).json({ error: "Missing required parameters" });
-      }
-  
-      // Check if the user exists
-      const userQuery = "SELECT * FROM users WHERE user_id = $1";
-      const userResult = await pool.query(userQuery, [userId]);
-  
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Check if the currency exists
-      const currencyQuery =
-        "SELECT * FROM cryptocurrencies WHERE currency_id = $1";
-      const currencyResult = await pool.query(currencyQuery, [currencyId]);
-  
-      if (currencyResult.rows.length === 0) {
-        return res.status(404).json({ error: "Currency not found" });
-      }
-  
-      // Get the user's wallet balance for the specified currency
-      const walletQuery =
-        "SELECT * FROM wallet WHERE user_id = $1 AND currency_id = $2";
-      const walletResult = await pool.query(walletQuery, [userId, currencyId]);
-  
-      if (walletResult.rows.length === 0) {
+
+    // Check if the user exists
+    const userQuery = "SELECT * FROM users WHERE user_id = $1";
+    const userResult = await pool.query(userQuery, [userId]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if the currency exists
+    const currencyQuery =
+      "SELECT * FROM cryptocurrencies WHERE currency_id = $1";
+    const currencyResult = await pool.query(currencyQuery, [currencyId]);
+
+    if (currencyResult.rows.length === 0) {
+      return res.status(404).json({ error: "Currency not found" });
+    }
+
+    // Get the user's wallet balance for the specified currency
+    const walletQuery =
+      "SELECT * FROM wallet WHERE user_id = $1 AND currency_id = $2";
+    const walletResult = await pool.query(walletQuery, [userId, currencyId]);
+
+    if (walletResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Wallet not found for user and currency" });
+    }
+
+    const walletData = walletResult.rows[0];
+    const currentBalance = parseFloat(walletData.balance);
+    const transactionAmount = parseFloat(amount);
+
+    let updatedBalance = 0;
+
+    console.log("Current Balance:", currentBalance);
+    console.log("Transaction Amount:", transactionAmount);
+
+    if (type === "buy") {
+      // Calculate new balance after buying
+      if (currentBalance < transactionAmount) {
         return res
-          .status(404)
-          .json({ error: "Wallet not found for user and currency" });
+          .status(400)
+          .json({ error: "Insufficient balance for purchase" });
       }
-  
-      const walletData = walletResult.rows[0];
-      const currentBalance = new BigNumber(walletData.balance);
-      const sellAmount = new BigNumber(amount);
-  
-      // Calculate new balance after sale
-      const updatedBalance = currentBalance.plus(sellAmount);
-  
-      // Update the user's wallet balance
-      const updateWalletQuery =
-        "UPDATE wallet SET balance = $1 WHERE user_id = $2 AND currency_id = $3";
-      await pool.query(updateWalletQuery, [updatedBalance.toString(), userId, currencyId]);
-  
-      // Record the transaction (You may need to adjust this part based on your specific transaction recording process)
-  
-      res.json({ message: "Cryptocurrency sold successfully" });
-    } catch (error) {
-      console.error("Internal server error", error);
-      res.status(500).json({ error: "Internal server error" });
+      updatedBalance = currentBalance - transactionAmount;
+    } else if (type === "sell") {
+      // Calculate new balance after selling
+      updatedBalance = currentBalance + transactionAmount;
+    } else {
+      return res.status(400).json({ error: "Invalid transaction type" });
     }
-  });
+
+    // Update the user's wallet balance
+    const updateWalletQuery =
+      "UPDATE wallet SET balance = $1 WHERE user_id = $2 AND currency_id = $3";
+    await pool.query(updateWalletQuery, [
+      updatedBalance.toString(),
+      userId,
+      currencyId,
+    ]);
+
+    // Record the transaction
+    const recordTransactionQuery = `
+    INSERT INTO transactions (user_id, currency_id, amount, type)
+    VALUES ($1, $2, $3, $4)
+  `;
+    await pool.query(recordTransactionQuery, [
+      userId,
+      currencyId,
+      amount,
+      type,
+    ]);
+
+    res.json({
+      message: `Cryptocurrency ${
+        type === "buy" ? "bought" : "sold"
+      } successfully`,
+    });
+  } catch (error) {
+    console.error("Internal server error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 customerRouter.post("/transferCryptocurrency", async (req, res) => {
   try {
@@ -148,6 +117,9 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
     const senderWalletData = senderWalletResult.rows[0];
 
     const senderBalance = senderWalletData?.balance || 0;
+
+    console.log('Sender Balance:', senderBalance);
+
 
     if (senderBalance < amount) {
       return res
@@ -222,6 +194,8 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
                 WHERE user_id = $2 AND currency_id = $3
             `;
 
+            console.log('Updated Receiver Balance:', updatedReceiverBalance);
+
       await pool.query(updateReceiverQuery, [
         updatedReceiverBalance,
         receiverUserId,
@@ -230,6 +204,19 @@ customerRouter.post("/transferCryptocurrency", async (req, res) => {
 
       // Commit the transaction
       await pool.query("COMMIT");
+
+      const recordTransactionQuery = `
+      INSERT INTO transactions (sender_user_id, receiver_user_id, from_currency, to_currency, amount, type)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `;
+      await pool.query(recordTransactionQuery, [
+        senderUserId,
+        receiverUserId,
+        fromCurrency,
+        toCurrency,
+        amount,
+        "transfer",
+      ]);
 
       res.json({ message: "Cryptocurrency transfer successful" });
     } catch (error) {

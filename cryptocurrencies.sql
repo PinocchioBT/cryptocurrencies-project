@@ -96,4 +96,8 @@ ALTER TABLE IF EXISTS public.wallet
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
 
+    ALTER TABLE public.wallet
+ADD COLUMN transaction_type VARCHAR(10);
+
+
 END;
