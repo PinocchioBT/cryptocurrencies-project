@@ -34,6 +34,21 @@ CREATE TABLE IF NOT EXISTS public.exchange_rates
     CONSTRAINT unique_from_to_currency UNIQUE (from_currency_id, to_currency_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.transactions
+(
+    transaction_id integer NOT NULL DEFAULT nextval('transactions_transaction_id_seq'::regclass),
+    user_id integer,
+    currency_id integer,
+    amount numeric(10, 2),
+    type character varying(10) COLLATE pg_catalog."default",
+    sender_user_id integer,
+    receiver_user_id integer,
+    from_currency integer,
+    to_currency integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT transactions_pkey PRIMARY KEY (transaction_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.users
 (
     user_id integer NOT NULL DEFAULT nextval('users_user_id_seq'::regclass),
@@ -52,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.wallet
     currency_id integer,
     balance numeric(10, 2),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    transaction_type character varying(10) COLLATE pg_catalog."default",
     CONSTRAINT wallet_pkey PRIMARY KEY (wallet_id)
 );
 
@@ -95,9 +111,5 @@ ALTER TABLE IF EXISTS public.wallet
     REFERENCES public.users (user_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
-
-    ALTER TABLE public.wallet
-ADD COLUMN transaction_type VARCHAR(10);
-
 
 END;
