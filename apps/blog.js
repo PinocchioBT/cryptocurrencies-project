@@ -3,8 +3,8 @@ import { pool } from "../utils/db.js";
 
 const blogRouter = Router();
 
-
-customerRouter.post("/", async (req, res) => {
+//this controller is for creating selling or buying blog 
+blogRouter.post("/", async (req, res) => {
     try {
       console.log("request body", req.body);
       const { title, content, type, userId, currencyId } = req.body;
