@@ -6,10 +6,12 @@ const adminRouter = Router();
 //Admin can see all total balance of all cryptocurrency.
 adminRouter.get("/totalBalance", async (req, res) => {
     try {
+      // Get all currencies
       const currenciesQuery = "SELECT * FROM cryptocurrencies";
       const currenciesResult = await pool.query(currenciesQuery);
       const currencies = currenciesResult.rows;
-  
+
+      //Calculate all of the balances from the wallet by looping through the currencies
       let totalBalance = 0;
   
       for (const currency of currencies) {
@@ -74,7 +76,10 @@ adminRouter.post("/addWallet", async (req, res) => {
 //Admin can add other cryptocurrency
 adminRouter.post("/addCryptocurrencies", async (req, res) => {
   try {
+
+    
     const { name, symbol } = req.body;
+
 
     const insertQuery =
       "INSERT INTO cryptocurrencies (name, symbol) VALUES ($1, $2) RETURNING *";
